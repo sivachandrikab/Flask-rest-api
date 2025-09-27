@@ -1,0 +1,62 @@
+from flask import Flask, request, jsonify, abort
+
+app = Flask(__name__)
+
+# In-memory user storage
+# user_id -> user_data dictionary
+users = {}
+
+# GET all users
+@app.route('/users', methods=['GET'])
+def get_users():
+    return jsonify(users)
+
+# GET a single user by ID
+@app.route('/users/<user_id>', methods=['GET'])
+def get_user(user_id):
+    user = users.get(user_id)
+    if user is None:
+        abort(404, description="User not found")
+    return jsonify(user)
+
+# POST - create a new user
+@app.route('/users', methods=['POST'])
+def create_user():
+    if not request.json or 'id' not in request.json or 'name' not in request.json:
+        abort(400, description="Missing user data or 'id'/'name'")
+    user_id = str(request.json['id'])
+    if user_id in users:
+        abort(400, description="User with this ID already exists")
+    user = {
+        'id': user_id,
+        'name': request.json['name'],
+        'email': request.json.get('email', '')
+    }
+    users[user_id] = user
+    return jsonify(user), 201
+
+# PUT - update an existing user
+@app.route('/users/<user_id>', methods=['PUT'])
+def update_user(user_id):
+    if user_id not in users:
+        abort(404, description="User not found")
+    if not request.json:
+        abort(400, description="Missing JSON data")
+    
+    user = users[user_id]
+    user['name'] = request.json.get('name', user['name'])
+    user['email'] = request.json.get('email', user['email'])
+    
+    users[user_id] = user
+    return jsonify(user)
+
+# DELETE a user
+@app.route('/users/<user_id>', methods=['DELETE'])
+def delete_user(user_id):
+    if user_id not in users:
+        abort(404, description="User not found")
+    del users[user_id]
+    return jsonify({'result': True})
+
+if __name__ == '__main__':
+    app.run(debug=True)
